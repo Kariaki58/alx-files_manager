@@ -24,6 +24,7 @@ class DBClient {
   }
 
   isAlive() {
+    console.log(this.connected)
     return this.connected
   }
 
