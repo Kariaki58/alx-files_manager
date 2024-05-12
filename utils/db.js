@@ -3,6 +3,7 @@ import { MongoClient } from 'mongodb';
 
 class DBClient {
   constructor() {
+    this.connected = false
     const HOST = process.env.DB_HOST || 'localhost';
     const PORT = process.env.DB_PORT || 27017;
     const DATABASE = process.env.DB_DATABASE || 'files_manager';
@@ -14,6 +15,7 @@ class DBClient {
     this.client
       .connect()
       .then(() => {
+        this.connected = true
         this.db = this.client.db(`${DATABASE}`);
       })
       .catch((err) => {
@@ -22,10 +24,7 @@ class DBClient {
   }
 
   isAlive() {
-    if (this.client.isConnected()) {
-      return true;
-    }
-    return false;
+    return this.connected
   }
 
   async nbUsers() {
