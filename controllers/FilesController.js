@@ -6,65 +6,52 @@ import fs from 'fs'
 import path from 'path';
 
 const postUpload = async (req, res) => {
-    const xToken = req.headers['x-token']
-    const getUserToken = await redisClient.get(`auth_${xToken}`)
-    if (!getUserToken) {
-        return res.status(401).send({"error":"Unauthorized"})
-    }
-    const userCollection = await dbClient.db.collection('users')
-    const filesCollection = await dbClient.db.collection('files')
-    const user = await userCollection.findOne({ _id: ObjectId(getUserToken) })
-    if (!user) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    const { body: { name, type, parentId = 0, isPublic = 0, data } } = req;
+    const token = req.headers['x-token']
+    const { name, type, parentId = 0, isPublic = false, data } = req.body
+    const content = Buffer.from(data, 'base64').toString()
+    const redisKey = `auth_${token}`
+    const value = await redisClient.get(redisKey)
+    const MongoId = new ObjectId(value)
+    const database = dbClient.db.collection('users')
+    const user = await database.findOne({ _id: ObjectId(MongoId) })
+
     if (!name) {
-        return res.status(400).json({ error: 'Missing name' });
-    }
-    if (!type || !['folder', 'file', 'image'].includes(type)) {
-        return res.status(400).json({ error: 'Missing type' });
-    }
-    if (!data && type !== 'folder') {
-        return res.status(400).json({ error: 'Missing data' })
+        return res.status(400).send({error: "Missing name"})
+    } else if (!type || !['folder', 'file', 'image'].includes(type)) {
+        return res.status(400).send({error: 'Missing type'})
+    } else if (!data && type != folder) {
+        return res.status(400).send({error: 'Missing data'})
     }
     if (parentId) {
-        const parentFile = filesCollection.findOne({ parentId })
-        console.log("*******************")
-        console.log(parentFile)
-        if (!parentFile) {
-            return res.status(400).json({ error: 'Parent not found' });
+        const filesCollection = await dbClient.db.collection("files")
+        const findByParentId = await filesCollection.findById(parentId)
+        console.log(findByParentId)
+        if (!findByParentId) {
+            return res.status(400).send({ error: "Parent not found"})
         }
-        if (parentFile.type !== 'folder') {
-            return res.status(400).json({ error: 'Parent is not a folder' });
+        if (findByParentId.type !== 'folder') {
+            return res.status(400).send({ error: "Parent is not a folder" })
         }
     }
-    let localPath = '';
     if (type === 'folder') {
-        const addedFile = filesCollection.insertOne({
-            userId: getUserToken, name, isPublic, parentId, type
-        })
-        return res.status(201).json(addedFile)
-    } else {
-        const folder = process.env.FOLDER_PATH || '/tmp/files_manager'
-        if (!fs.existsSync(folder)) {
-            fs.mkdirSync(folder, {recursive: true})
+        const document = {
+            userId: user._id, name, type, isPublic, parentId
         }
-        const fileName = uuidv4()
-        const filePath = path.join(folder, fileName)
-        const decode = Buffer.from(data, 'base64')
-        fs.writeFileSync(filePath, decode)
-        const addedData = await filesCollection.insertOne({
-            userId: getUserToken, name, isPublic, parentId, type, filePath
-        })
-        return res.status(201).json({
-            id: addedData.ops[0]._id,
-            userId: addedData.ops[0].userId,
-            name: addedData.ops[0].name,
-            parentId: addedData.ops[0].parentId,
-            type: addedData.ops[0].parentId,
-            type: addedData.ops[0].type,
-            isPublic: addedData.ops[0].isPublic
-        })
+        return res.status(201).send(document)
+    } else {
+        const filesCollection = await dbClient.db.collection('files')
+        const file = filesCollection.findOne({ name })
+        const localPath = uuidv4()
+        if (!fs.existsSync('/tmp/files_manager')) {
+            const relativePath = process.env.FOLDER_PATH || '/tmp/files_manager'
+            fs.mkdirSync(relativePath, { recursive: true })
+            fs.writeFileSync(path.join(relativePath, localPath), content)
+        }
+        const newFileDocs = {
+            userId: user.id, name, type, isPublic, parentId,
+            localPath: ['file', 'image'].includes(type) ? localPath : null 
+        }
+        return res.status(201).send(newFileDocs)
     }
 }
 
