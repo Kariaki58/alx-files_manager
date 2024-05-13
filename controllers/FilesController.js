@@ -3,52 +3,82 @@ import redisClient from '../utils/redis'
 import { ObjectId }  from 'mongodb'
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs'
-import path from 'path';
+
 
 const postUpload = async (req, res) => {
-    const xToken = req.headers['x-token']
-    const getUserToken = await redisClient.get(`auth_${xToken}`)
-    if (!getUserToken) {
-        return res.status(401).send({"error":"Unauthorized"})
-    }
-    const userCollection = await dbClient.db.collection('users')
-    const userFromId = await userCollection.findOne({ _id: ObjectId(getUserToken) })
-    const { body: { name, type, parentId = 0, isPublic = false, data } } = req;
+    const token = req.headers['x-token']
+    const key = `auth_${token}`
+    const userId = await redisClient.get(key)
 
+    if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' })
+    }
+    const {
+        name, type, parentId, isPublic, data
+    } = req.body
     if (!name) {
-        return res.status(400).send({"error": "Missing name"})
-    } else if (!type || !['folder', 'file', 'image'].includes(type)) {
-        return res.status(400).send({"error": "Missing type"})
-    } else if (!data && type != data) {
-        return res.status(400).send({"error": "Missing data"})
+        return res.status(400).json({error: 'Missing name'})
     }
-    if (parentId !== 0) {
-        const parentFile = await dbClient.db.collection('files').findOne({ _id: parentId });
-        if (!parentFile) {
-            return res.status(400).send({ error: 'Parent not found' });
+    const accepted = ['file', 'folder', 'image']
+    if (!type || !accepted.includes(type)) {
+        return res.status(400).json({ error: 'Missing type' })
+    }
+    if (!data && type !== 'folder') {
+        return res.status(400).json({ error: 'Missing data' })
+    }
+    if (parentId) {
+        const collection = await dbClient.db.collection('files')
+        const checkfile = await collection.findOne({ _id: ObjectId(parentId) })
+        if (!checkfile) {
+            return res.status(400).json({ error: 'Parent not found' })
         }
+        if (checkfile.type !== 'folder') {
+            return res.status(400).json({ error: 'Parent is not a folder' })
+        }
+    }
+    if (type === 'folder') {
+        let localpath = null
 
-        if (parentFile.type !== 'folder') {
-            return res.status(400).send({ error: 'Parent is not a folder' });
+        const database = await dbClient.db.collection('files')
+        if (localpath) {
+            await database.insertOne({
+                userId, name, type, isPublic, parentId, localpath
+            })
+        } else {
+            await database.insertOne({
+                userId, name, type, isPublic, parentId
+            })
         }
-    }
-    const local = null
-    try {
+        const addedFile = await database.findOne({ name })
+        return res.status(201).json(addedFile)
+    } else {
         const folderPath = process.env.FOLDER_PATH || '/tmp/files_manager';
         if (!fs.existsSync(folderPath)) {
-            fs.mkdirSync(folderPath, { recursive: true })
+            fs.mkdirSync(folderPath, { recursive: true });
         }
-        const localPath = `${folderPath}/${uuidv4()}`;
-        fs.writeFileSync(localPath, Buffer.from(data, 'base64'));
-    } catch(err) {
-        console.log(err.message)
+        const filename = uuid.v4();
+        const filePath = path.join(folderPath, filename);
+        const decodedData = Buffer.from(data, 'base64');
+        fs.writeFileSync(filePath, decodedData);
+        const database = await dbClient.db.collection('files')
+        if (localpath) {
+            await database.insertOne({
+                userId, name, type, isPublic, parentId, localpath
+            })
+        } else {
+            await database.insertOne({
+                userId, name, type, isPublic, parentId
+            })
+        }
+        const addedFile = await database.findOne({ name })
+        res.status(201).json(
+            {
+              id: addedFile.id, userId: addedFile.userId,
+              name: addedFile.name, parentId: addedFile.parentId,
+              type: addedFile.type, isPublic: addedFile.isPublic,
+            }
+        )
     }
-    const files = { 
-        userId: userFromId._id, name, type,
-        isPublic, parentId, localPath: type === 'folder' ? null : local
-    }
-    await dbClient.db.collection("files").insertOne(files)
-    return res.status(201).send(files)
 }
 
 export default postUpload
