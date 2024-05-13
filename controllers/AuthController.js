@@ -33,16 +33,5 @@ const getDisconnect = async (req, res) => {
     return res.sendStatus(204)
 }
 
-const getMe = async (req, res) => {
-    const xToken = req.headers['x-token']
-    const getUserToken = await redisClient.get(`auth_${xToken}`)
-    if (!getUserToken) {
-        return res.status(401).send({"error":"Unauthorized"})
-    }
-    const userCollection = await dbClient.db.collection('users')
-    const userFromId = await userCollection.findOne({ _id: ObjectId(getUserToken) })
-    delete userFromId._id
-    return res.status(200).send(userFromId)
-}
 
-export { getConnect, getDisconnect, getMe }
+export { getConnect, getDisconnect }
