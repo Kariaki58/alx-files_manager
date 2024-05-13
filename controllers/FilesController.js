@@ -81,7 +81,17 @@ const postUpload = async (req, res) => {
     }
 }
 
-const getShow = (req, res) => {
+const getShow = async(req, res) => {
+    const token = req.headers['x-token']
+    const redisKey = `auth_${token}`
+    const value = await redisClient.get(redisKey)
+    const MongoId = new ObjectId(value)
+    const database = dbClient.db.collection('users')
+    const user = await database.findOne({ _id: ObjectId(MongoId) })
+    console.log(user)
+}
+
+const getIndex = async (req, res) => {
 
 }
-export { postUpload, getShow }
+export { postUpload, getShow, getIndex }
