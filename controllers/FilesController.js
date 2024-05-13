@@ -17,7 +17,7 @@ const postUpload = async (req, res) => {
     if (!user) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
-    const { body: { name, type, parentId, isPublic, data } } = req;
+    const { body: { name, type, parentId = 0, isPublic = 0, data } } = req;
     if (!name) {
         return res.status(400).json({ error: 'Missing name' });
     }
