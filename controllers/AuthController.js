@@ -1,6 +1,5 @@
 import dbClient from '../utils/db'
 import redisClient from '../utils/redis'
-import { ObjectId }  from 'mongodb'
 import sha1 from 'sha1'
 import { v4 as uuidv4 } from 'uuid';
 
@@ -11,15 +10,22 @@ const getConnect = async (req, res) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
     const credentials = Buffer.from(basicAuth.slice(6), 'base64').toString().split(':');
+    if (!credentials[0] || !credentials[1]) {
+        return res.status(401).json({ error: 'Unauthorized' })
+    }
     const email = credentials[0];
     const password = credentials[1];
     const usersCollection = dbClient.db.collection('users');
-    const user = await usersCollection.findOne({ email, password: sha1(password) });
+    const user = await usersCollection.findOne({ email });
     if (!user) {
         return res.status(401).json({ error: 'Unauthorized' });
     }
+    const hashedpwd = sha1(password)
+    if (user.password != hashedpwd) {
+        return res.status(401).json({ error: 'Unauthorized' })
+    }
     const authToken = uuidv4()
-    await redisClient.set(`auth_${authToken}`, user._id.toString(), 24 * 60 * 60);
+    await redisClient.set(`auth_${authToken}`, user._id.toString(), 86400);
     return res.status(200).json({ token: authToken });
 }
 
