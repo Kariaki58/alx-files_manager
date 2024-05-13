@@ -3,6 +3,7 @@ import redisClient from '../utils/redis'
 import { ObjectId }  from 'mongodb'
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs'
+import { error } from 'console';
 
 
 const postUpload = async (req, res) => {
@@ -88,7 +89,17 @@ const getShow = async(req, res) => {
     const MongoId = new ObjectId(value)
     const database = dbClient.db.collection('users')
     const user = await database.findOne({ _id: ObjectId(MongoId) })
-    console.log(user)
+    if (!user) {
+        return res.status(401).send({ error: "Unauthorized" })
+    }
+    const fileId = req.params.id;
+    const fileData = await dbClient.db.collection('files');
+    const file = fileData.findById(fileId)
+
+    if (!file || file.userId.toString() !== value) {
+        res.status(404).json({ error: 'Not found' });
+    }
+    return res.json(file);
 }
 
 const getIndex = async (req, res) => {
