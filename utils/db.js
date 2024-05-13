@@ -16,17 +16,11 @@ class DBClient {
       .connect()
       .then(() => {
         this.connected = true
-        console.log("connected")
         this.db = this.client.db(`${DATABASE}`);
       })
       .catch((err) => {
         console.log(err);
       });
-  }
-  getdb() {
-    console.log("here")
-    console.log(this.db)
-    return this.db
   }
   isAlive() {
     return this.connected

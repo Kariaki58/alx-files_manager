@@ -18,7 +18,6 @@ const postNew = (req, res) => {
             users.insertOne(
                 {email, password: hashedpassword}
             ).then((result) => {
-                console.log(result)
                 res.status(201).json({id: result.insertedId, email })
             }).catch((err) => console.error(err))
         }
