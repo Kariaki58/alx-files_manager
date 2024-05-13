@@ -2,14 +2,14 @@ import dbClient from '../utils/db';
 import sha1 from 'sha1'
 
 
-const postNew = (req, res) => {
+const postNew = async (req, res) => {
     const { body: { email, password} } = req
 
     if (!email)
         return res.status(400).send({"error": "Missing email"})
     if (!password)
         return res.status(400).send({"error": "Missing password"})
-    const users = dbClient.db.collection('users')
+    const users = await dbClient.db.collection('users')
     users.findOne({email}, (err, data) => {
         if(data) {
            return res.status(400).send({"email": "Already exist"})
