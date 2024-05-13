@@ -39,7 +39,7 @@ const postUpload = async (req, res) => {
             }
         }
         let localPath = '';
-        if (!type || !['file', 'image'].includes(type)) {
+        if (!type || !['file', 'image', 'folder'].includes(type)) {
             return res.status(400).json({ error: 'Missing type' });
         }
         if (['file', 'image'].includes(type)) {
