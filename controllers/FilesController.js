@@ -30,7 +30,6 @@ const postUpload = async (req, res) => {
         const fileCollection = await dbClient.db.collection('files')
         const findByParentId = await fileCollection.findOne({ parentId })
         // validate this code
-        console.log(findByParentId)
         if (!findByParentId) {
             return res.status(400).send({error: 'Parent not found'})
         }
@@ -43,8 +42,8 @@ const postUpload = async (req, res) => {
     }
     const fileCollection = await dbClient.db.collection('files')
     if (type === 'folder') {
-        await fileCollection.insertOne(newFileDocument)
-        return res.status(201).send(newFileDocument)
+        const output = await fileCollection.insertOne(newFileDocument)
+        return res.status(201).send({ id: output.ops[0]._id, ...output.ops[0]})
     } else {
         const relativePath = process.env.FOLDER_PATH || '/tmp/files_manager'
         if (!fs.existsSync(relativePath))  {
@@ -56,8 +55,8 @@ const postUpload = async (req, res) => {
             userId: user._id, name, type, isPublic, parentId,
             localPath: ['file', 'image'].includes(type) ? localPath : null
         }
-        await fileCollection.insertOne(newFile)
-        return res.status(201).send(newFile)
+        const ouput = await fileCollection.insertOne(newFile)
+        return res.status(201).send({id: ouput.ops[0]._id, ...ouput.ops[0]})
     }
 }
 
