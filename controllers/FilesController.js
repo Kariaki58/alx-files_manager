@@ -56,7 +56,7 @@ const postUpload = async (req, res) => {
         if (!fs.existsSync(folderPath)) {
             fs.mkdirSync(folderPath, { recursive: true });
         }
-        const filename = uuid.v4();
+        const filename = uuidv4();
         const filePath = path.join(folderPath, filename);
         const decodedData = Buffer.from(data, 'base64');
         fs.writeFileSync(filePath, decodedData);
@@ -81,4 +81,7 @@ const postUpload = async (req, res) => {
     }
 }
 
-export default postUpload
+const getShow = (req, res) => {
+
+}
+export { postUpload, getShow }
