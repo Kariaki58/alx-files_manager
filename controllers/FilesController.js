@@ -3,6 +3,7 @@ import redisClient from '../utils/redis'
 import { ObjectId }  from 'mongodb'
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs'
+import { mime } from 'mime-types'
 import path from 'path';
 
 
@@ -167,7 +168,6 @@ const getFile = async (req, res) => {
     }
     const relativePath = process.env.FOLDER_PATH || '/tmp/files_manager'
     if (!fs.existsSync(path.join(relativePath, file.localPath))) {
-        console.log("inside here")
         return res.status(404).json({ error: 'Not found' });
     }
     const fileData = fs.readFileSync(path.join(relativePath, file.localpath));
