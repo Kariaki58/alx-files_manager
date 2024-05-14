@@ -107,4 +107,46 @@ const getIndex = async (req, res) => {
     res.json(files);
 }
 
-export { postUpload, getShow, getIndex }
+const putPublish = async (req, res) => {
+    const { params: { id }} = req
+    const token = req.headers['x-token']
+    const redisKey = `auth_${token}`
+    const value = await redisClient.get(redisKey)
+    const MongoId = new ObjectId(value)
+    const database = dbClient.db.collection('users')
+    const user = await database.findOne({ _id: ObjectId(MongoId) })
+    if (!user) {
+        return res.status(401).send({error: "Unauthorized"})
+    }
+    const fileCollection = await dbClient.db.collection('files')
+    const fileData = await fileCollection.findOne({ _id: ObjectId(id) })
+    if (!fileData) {
+        return res.status(404).send({error: 'Not found'})
+    }
+    await fileCollection.updateOne({ id: ObjectId(id)}, { $set: { isPublic: true} })
+    return res.status(200).send(fileData)
+}
+
+const putUnpublish = async (req, res) => {
+    const { params: { id }} = req
+    const token = req.headers['x-token']
+    const redisKey = `auth_${token}`
+    const value = await redisClient.get(redisKey)
+    const MongoId = new ObjectId(value)
+    const database = dbClient.db.collection('users')
+    const user = await database.findOne({ _id: ObjectId(MongoId) })
+    if (!user) {
+        return res.status(401).send({error: "Unauthorized"})
+    }
+    const fileCollection = await dbClient.db.collection('files')
+    const fileData = await fileCollection.findOne({ _id: ObjectId(id) })
+    console.log(fileData)
+
+    if (!fileData) {
+        return res.status(404).send({error: 'Not found'})
+    }
+    await fileCollection.updateOne({ id: ObjectId(id)}, { $set: { isPublic: false} })
+    return res.status(200).send(fileData)
+}
+
+export { postUpload, getShow, getIndex, putPublish, putUnpublish }
