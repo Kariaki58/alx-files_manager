@@ -100,7 +100,7 @@ const getIndex = async (req, res) => {
 
     const collection = await dbClient.db.collection('files')
     const files = await collection.aggregate([
-        {$math: {userId, parentId}}, {$skip: page * 20},
+        {$match: {userId, parentId}}, {$skip: page * 20},
         { $limit: 20 }
     ]).toArray()
 
