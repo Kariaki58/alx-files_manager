@@ -15,7 +15,7 @@ const getConnect = async (req, res) => {
     }
     const email = credentials[0];
     const password = credentials[1];
-    const usersCollection = dbClient.db.collection('users');
+    const usersCollection = dbClient.db.collection('users')
     const user = await usersCollection.findOne({ email });
     if (!user) {
         return res.status(401).json({ error: 'Unauthorized' });

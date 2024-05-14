@@ -43,7 +43,9 @@ const postUpload = async (req, res) => {
     const fileCollection = await dbClient.db.collection('files')
     if (type === 'folder') {
         const output = await fileCollection.insertOne(newFileDocument)
-        return res.status(201).send({ id: output.ops[0]._id, ...output.ops[0]})
+        const mainOutput = { id: output.ops[0]._id, ...output.ops[0] }
+        delete mainOutput._id
+        return res.status(201).send(mainOutput)
     } else {
         const relativePath = process.env.FOLDER_PATH || '/tmp/files_manager'
         if (!fs.existsSync(relativePath))  {
@@ -56,7 +58,9 @@ const postUpload = async (req, res) => {
             localPath: ['file', 'image'].includes(type) ? localPath : null
         }
         const ouput = await fileCollection.insertOne(newFile)
-        return res.status(201).send({id: ouput.ops[0]._id, ...ouput.ops[0]})
+        const mainOutput = { id: ouput.ops[0]._id, ...ouput.ops[0]}
+        delete mainOutput._id
+        return res.status(201).send(mainOutput)
     }
 }
 
