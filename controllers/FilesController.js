@@ -91,8 +91,7 @@ const getIndex = async (req, res) => {
     const userId = await redisClient.get(key);
 
     if (!userId) {
-        res.status(401).json({ error: 'Unauthorized' });
-        return;
+       return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const parentId = req.query.parentId || 0;
@@ -140,7 +139,6 @@ const putUnpublish = async (req, res) => {
     }
     const fileCollection = await dbClient.db.collection('files')
     const fileData = await fileCollection.findOne({ _id: ObjectId(id) })
-    console.log(fileData)
 
     if (!fileData) {
         return res.status(404).send({error: 'Not found'})
@@ -149,4 +147,33 @@ const putUnpublish = async (req, res) => {
     return res.status(200).send(fileData)
 }
 
-export { postUpload, getShow, getIndex, putPublish, putUnpublish }
+const getFile = async (req, res) => {
+    const token = req.get('X-token');
+    const key = `auth_${token}`;
+    const userId = await redisClient.get(key);
+
+    const { params: { id } } = req;
+    const collection = await dbClient.db.collection('files')
+    const file = await collection.findOne({ _id: ObjectId(id) })
+
+    if (!file) {
+        return res.status(404).json({ error: 'Not found' });
+    }
+    if ((file.isPublic === false) && (!userId || file.userId !== userId)) {
+        return res.status(404).json({ error: 'Not found' });
+    }
+    if (file.type === 'folder') {
+        return res.status(400).json({ error: 'A folder doesn\'t have content' });
+    }
+    const relativePath = process.env.FOLDER_PATH || '/tmp/files_manager'
+    if (!fs.existsSync(path.join(relativePath, file.localPath))) {
+        console.log("inside here")
+        return res.status(404).json({ error: 'Not found' });
+    }
+    const fileData = fs.readFileSync(path.join(relativePath, file.localpath));
+    const mimetype = mime.lookup(file.name);
+    res.setHeader('Content-Type', mimetype);
+    return res.status(200).send(fileData);
+}
+
+export { postUpload, getShow, getIndex, putPublish, putUnpublish, getFile }
