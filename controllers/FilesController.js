@@ -16,7 +16,9 @@ const postUpload = async (req, res) => {
     if (!user) {
         return res.status(401).json({error: 'Unauthorized'})
     }
-    const { body: { name, type, parentId = 0, isPublic = false, data }} = req
+    let { body: { name, type, parentId, isPublic, data }} = req
+    parentId = parentId ? parentId : 0
+    isPublic = isPublic === undefined? false: isPublic
     if (!name) {
         return res.status(400).send({error: 'Missing name'})
     }
@@ -64,4 +66,45 @@ const postUpload = async (req, res) => {
     }
 }
 
-export { postUpload }
+const getShow = async(req, res) => {
+    const { params: { id }} = req
+    const token = req.headers['x-token']
+    const redisKey = `auth_${token}`
+    const value = await redisClient.get(redisKey)
+    const MongoId = new ObjectId(value)
+    const database = dbClient.db.collection('users')
+    const user = await database.findOne({ _id: ObjectId(MongoId) })
+    if (!user) {
+        return res.status(401).send({error: "Unauthorized"})
+    }
+    const fileCollection = await dbClient.db.collection('files')
+    const fileData = await fileCollection.findOne({ _id: ObjectId(id) })
+    if (!fileData) {
+        return res.status(404).send({error: 'Not found'})
+    }
+    return res.send(fileData)
+}
+
+const getIndex = async (req, res) => {
+    const token = req.get('X-token');
+    const key = `auth_${token}`;
+    const userId = await redisClient.get(key);
+
+    if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    const parentId = req.query.parentId || 0;
+    const page = req.query.page || 0;
+
+    const collection = await dbClient.db.collection('files')
+    const files = await collection.aggregate([
+        {$math: {userId, parentId}}, {$skip: page * 20},
+        { $limit: 20 }
+    ]).toArray()
+
+    res.json(files);
+}
+
+export { postUpload, getShow, getIndex }
