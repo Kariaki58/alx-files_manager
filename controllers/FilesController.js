@@ -17,7 +17,7 @@ const postUpload = async (req, res) => {
         return res.status(401).json({error: 'Unauthorized'})
     }
     let { body: { name, type, parentId, isPublic, data }} = req
-    parentId = parentId ? parentId : 0
+    parentId = parentId === undefined? 0 : parentId
     isPublic = isPublic === undefined? false: isPublic
     if (!name) {
         return res.status(400).send({error: 'Missing name'})
